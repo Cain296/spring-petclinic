@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.owner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Page;
@@ -33,6 +34,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -44,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -131,6 +134,47 @@ class OwnerControllerTests {
 			.andExpect(model().attributeHasFieldErrors("owner", "address"))
 			.andExpect(model().attributeHasFieldErrors("owner", "telephone"))
 			.andExpect(view().name("owners/createOrUpdateOwnerForm"));
+	}
+
+	@Test
+	void processCreationFormTrimsSurroundingWhitespace() throws Exception {
+		mockMvc
+			.perform(post("/owners/new").param("firstName", "  Joe  ")
+				.param("lastName", " Bloggs ")
+				.param("address", " 123 Caramel Street ")
+				.param("city", " London ")
+				.param("telephone", " 1316761638 "))
+			.andExpect(status().is3xxRedirection());
+
+		ArgumentCaptor<Owner> ownerCaptor = ArgumentCaptor.forClass(Owner.class);
+		verify(this.owners).save(ownerCaptor.capture());
+		Owner saved = ownerCaptor.getValue();
+		assertThat(saved.getFirstName()).isEqualTo("Joe");
+		assertThat(saved.getLastName()).isEqualTo("Bloggs");
+		assertThat(saved.getAddress()).isEqualTo("123 Caramel Street");
+		assertThat(saved.getCity()).isEqualTo("London");
+		assertThat(saved.getTelephone()).isEqualTo("1316761638");
+	}
+
+	@Test
+	void processCreationFormRejectsWhitespaceOnlyValues() throws Exception {
+		mockMvc
+			.perform(post("/owners/new").param("firstName", "  ")
+				.param("lastName", "\t")
+				.param("address", " ")
+				.param("city", "   ")
+				.param("telephone", "  "))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeHasErrors("owner"))
+			.andExpect(
+					model().attributeHasFieldErrors("owner", "firstName", "lastName", "address", "city", "telephone"))
+			.andExpect(model().attributeHasFieldErrorCode("owner", "firstName", "NotBlank"))
+			.andExpect(model().attributeHasFieldErrorCode("owner", "lastName", "NotBlank"))
+			.andExpect(model().attributeHasFieldErrorCode("owner", "address", "NotBlank"))
+			.andExpect(model().attributeHasFieldErrorCode("owner", "city", "NotBlank"))
+			.andExpect(view().name("owners/createOrUpdateOwnerForm"));
+
+		verify(this.owners, never()).save(any(Owner.class));
 	}
 
 	@Test
