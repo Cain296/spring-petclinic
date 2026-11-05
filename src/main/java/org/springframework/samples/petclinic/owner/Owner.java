@@ -90,7 +90,7 @@ public class Owner extends Person {
 	}
 
 	public void setTelephone(String telephone) {
-		this.telephone = telephone;
+		this.telephone = (telephone != null) ? telephone.replaceAll("[\\s()\\-]", "") : null;
 	}
 
 	public List<Pet> getPets() {

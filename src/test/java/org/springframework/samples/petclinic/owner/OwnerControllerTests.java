@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.owner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Page;
@@ -40,6 +41,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -120,6 +122,35 @@ class OwnerControllerTests {
 				.param("city", "London")
 				.param("telephone", "1316761638"))
 			.andExpect(status().is3xxRedirection());
+	}
+
+	@Test
+	void processCreationFormNormalizesSeparatedTelephone() throws Exception {
+		mockMvc
+			.perform(post("/owners/new").param("firstName", "Joe")
+				.param("lastName", "Bloggs")
+				.param("address", "123 Caramel Street")
+				.param("city", "London")
+				.param("telephone", "(608) 555-1023"))
+			.andExpect(status().is3xxRedirection());
+
+		ArgumentCaptor<Owner> savedOwner = ArgumentCaptor.forClass(Owner.class);
+		verify(this.owners).save(savedOwner.capture());
+		assertEquals("6085551023", savedOwner.getValue().getTelephone());
+	}
+
+	@Test
+	void processCreationFormRejectsTelephoneWithTooFewDigitsAfterNormalization() throws Exception {
+		mockMvc
+			.perform(post("/owners/new").param("firstName", "Joe")
+				.param("lastName", "Bloggs")
+				.param("address", "123 Caramel Street")
+				.param("city", "London")
+				.param("telephone", "608-555-102"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeHasFieldErrors("owner", "telephone"))
+			.andExpect(model().attributeHasFieldErrorCode("owner", "telephone", "Pattern"))
+			.andExpect(view().name("owners/createOrUpdateOwnerForm"));
 	}
 
 	@Test
