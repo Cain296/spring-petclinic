@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.springframework.beans.propertyeditors.StringTrimmerEditor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -57,8 +58,9 @@ class OwnerController {
 	}
 
 	@InitBinder
-	public void setAllowedFields(WebDataBinder dataBinder) {
+	public void initBinder(WebDataBinder dataBinder) {
 		dataBinder.setDisallowedFields("id", "*.id");
+		dataBinder.registerCustomEditor(String.class, new StringTrimmerEditor(true));
 	}
 
 	@ModelAttribute("owner")
