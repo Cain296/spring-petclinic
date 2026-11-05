@@ -15,9 +15,17 @@
  */
 package org.springframework.samples.petclinic.owner;
 
-import org.junit.jupiter.api.Test;
+import java.util.Set;
 
+import org.junit.jupiter.api.Test;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OwnerTests {
@@ -46,6 +54,73 @@ class OwnerTests {
 		owner.addPet(pet);
 
 		assertEquals(1, owner.getPets().size());
+	}
+
+	@Test
+	void setTelephoneRemovesCommonSeparators() {
+		Owner owner = new Owner();
+
+		owner.setTelephone("608-555-1023");
+		assertEquals("6085551023", owner.getTelephone());
+
+		owner.setTelephone("608 555 1023");
+		assertEquals("6085551023", owner.getTelephone());
+
+		owner.setTelephone("(608)5551023");
+		assertEquals("6085551023", owner.getTelephone());
+	}
+
+	@Test
+	void nullTelephoneRemainsNull() {
+		Owner owner = new Owner();
+
+		assertDoesNotThrow(() -> owner.setTelephone(null));
+		assertNull(owner.getTelephone());
+	}
+
+	@Test
+	void emptyTelephoneIsInvalid() {
+		Set<ConstraintViolation<Owner>> violations = validateTelephone("");
+
+		assertTrue(violations.stream()
+			.anyMatch(violation -> "telephone".equals(violation.getPropertyPath().toString())
+					&& "{telephone.invalid}".equals(violation.getMessageTemplate())));
+	}
+
+	@Test
+	void separatedTelephoneIsValid() {
+		assertTrue(validateTelephone("(608) 555-1023").isEmpty());
+	}
+
+	@Test
+	void telephoneWithTooFewDigitsIsInvalid() {
+		assertTelephoneInvalid("608-555-102");
+	}
+
+	@Test
+	void telephoneWithLettersIsInvalid() {
+		assertTelephoneInvalid("608-555-102a");
+	}
+
+	private static Set<ConstraintViolation<Owner>> validateTelephone(String telephone) {
+		Owner owner = new Owner();
+		owner.setFirstName("George");
+		owner.setLastName("Franklin");
+		owner.setAddress("110 W. Liberty St.");
+		owner.setCity("Madison");
+		owner.setTelephone(telephone);
+
+		LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+		validator.afterPropertiesSet();
+		return validator.validate(owner);
+	}
+
+	private static void assertTelephoneInvalid(String telephone) {
+		Set<ConstraintViolation<Owner>> violations = validateTelephone(telephone);
+		assertEquals(1, violations.size());
+		ConstraintViolation<Owner> violation = violations.iterator().next();
+		assertEquals("telephone", violation.getPropertyPath().toString());
+		assertEquals("{telephone.invalid}", violation.getMessageTemplate());
 	}
 
 }
