@@ -23,7 +23,9 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OwnerTests {
@@ -66,6 +68,23 @@ class OwnerTests {
 
 		owner.setTelephone("(608)5551023");
 		assertEquals("6085551023", owner.getTelephone());
+	}
+
+	@Test
+	void nullTelephoneRemainsNull() {
+		Owner owner = new Owner();
+
+		assertDoesNotThrow(() -> owner.setTelephone(null));
+		assertNull(owner.getTelephone());
+	}
+
+	@Test
+	void emptyTelephoneIsInvalid() {
+		Set<ConstraintViolation<Owner>> violations = validateTelephone("");
+
+		assertTrue(violations.stream()
+			.anyMatch(violation -> "telephone".equals(violation.getPropertyPath().toString())
+					&& "{telephone.invalid}".equals(violation.getMessageTemplate())));
 	}
 
 	@Test
