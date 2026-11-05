@@ -55,4 +55,17 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	@Cacheable("vets")
 	Page<Vet> findAll(Pageable pageable) throws DataAccessException;
 
+	/**
+	 * Retrieve <code>Vet</code>s whose first name or last name contains the given value,
+	 * ignoring case, from the data store in Pages.
+	 * @param firstName the value to look for in first names
+	 * @param lastName the value to look for in last names
+	 * @param pageable the pagination information
+	 * @return a <code>Page</code> of matching <code>Vet</code>s
+	 * @throws DataAccessException
+	 */
+	@Transactional(readOnly = true)
+	Page<Vet> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(String firstName, String lastName,
+			Pageable pageable) throws DataAccessException;
+
 }

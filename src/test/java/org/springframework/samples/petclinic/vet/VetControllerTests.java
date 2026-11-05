@@ -23,6 +23,7 @@ import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.aot.DisabledInAotMode;
@@ -33,8 +34,12 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -98,6 +103,84 @@ class VetControllerTests {
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/vets.html?page=1"));
 		}
+	}
+
+	@Test
+	void showVetListFiltersByName() throws Exception {
+		given(this.vets.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("hel", "hel",
+				PageRequest.of(0, 5)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(helen()), PageRequest.of(0, 5), 1));
+
+		mockMvc.perform(get("/vets.html").param("q", " hel "))
+			.andExpect(status().isOk())
+			.andExpect(view().name("vets/vetList"))
+			.andExpect(model().attribute("q", "hel"))
+			.andExpect(model().attribute("listVets", hasSize(1)))
+			.andExpect(model().attribute("totalItems", 1L))
+			.andExpect(content().string(containsString("Helen Leary")))
+			.andExpect(content().string(containsString("value=\"hel\"")));
+
+		verify(this.vets).findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("hel", "hel",
+				PageRequest.of(0, 5));
+	}
+
+	@Test
+	void showVetListWithNoMatchingVets() throws Exception {
+		given(this.vets.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("zzz", "zzz",
+				PageRequest.of(0, 5)))
+			.willReturn(new PageImpl<Vet>(List.of(), PageRequest.of(0, 5), 0));
+
+		mockMvc.perform(get("/vets.html").param("q", "zzz"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("vets/vetList"))
+			.andExpect(model().attribute("q", "zzz"))
+			.andExpect(model().attribute("listVets", hasSize(0)))
+			.andExpect(model().attribute("totalItems", 0L));
+
+		verify(this.vets).findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("zzz", "zzz",
+				PageRequest.of(0, 5));
+	}
+
+	@Test
+	void showVetListIgnoresBlankQuery() throws Exception {
+		mockMvc.perform(get("/vets.html").param("q", "   "))
+			.andExpect(status().isOk())
+			.andExpect(view().name("vets/vetList"))
+			.andExpect(model().attribute("q", ""))
+			.andExpect(model().attribute("listVets", hasSize(2)));
+
+		verify(this.vets).findAll(PageRequest.of(0, 5));
+		verify(this.vets, never()).findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(any(), any(),
+				any());
+	}
+
+	@Test
+	void showVetListPaginatesFilteredResults() throws Exception {
+		given(this.vets.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("a", "a",
+				PageRequest.of(1, 5)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(james()), PageRequest.of(1, 5), 6));
+
+		mockMvc.perform(get("/vets.html").param("page", "2").param("q", "a"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("vets/vetList"))
+			.andExpect(model().attribute("currentPage", 2))
+			.andExpect(model().attribute("totalPages", 2))
+			.andExpect(content().string(containsString("/vets.html?page=1&amp;q=a")))
+			.andExpect(content().string(containsString("value=\"a\"")));
+
+		verify(this.vets).findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("a", "a",
+				PageRequest.of(1, 5));
+	}
+
+	@Test
+	void showVetListRedirectsOutOfBoundsFilteredPageToFirstPage() throws Exception {
+		given(this.vets.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("vet", "vet",
+				PageRequest.of(1, 5)))
+			.willReturn(new PageImpl<Vet>(List.of(), PageRequest.of(1, 5), 0));
+
+		mockMvc.perform(get("/vets.html").param("page", "2").param("q", "vet"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/vets.html?page=1&q=vet"));
 	}
 
 	@Test
