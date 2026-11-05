@@ -43,30 +43,42 @@ class VetController {
 	}
 
 	@GetMapping("/vets.html")
-	public String showVetList(@RequestParam(defaultValue = "1") int page, Model model,
-			RedirectAttributes redirectAttributes) {
-		Page<Vet> paginated = findPaginated(page);
+	public String showVetList(@RequestParam(defaultValue = "1") int page, @RequestParam(required = false) String q,
+			Model model, RedirectAttributes redirectAttributes) {
+		String query = normalizeQuery(q);
+		Page<Vet> paginated = findPaginated(page, query);
 		if (page < 1 || page > Math.max(paginated.getTotalPages(), 1)) {
 			redirectAttributes.addAttribute("page", 1);
+			if (!query.isEmpty()) {
+				redirectAttributes.addAttribute("q", query);
+			}
 			return "redirect:/vets.html";
 		}
-		return addPaginationModel(page, paginated, model);
+		return addPaginationModel(page, paginated, query, model);
 	}
 
-	private String addPaginationModel(int page, Page<Vet> paginated, Model model) {
+	private static String normalizeQuery(String q) {
+		return (q == null) ? "" : q.strip();
+	}
+
+	private String addPaginationModel(int page, Page<Vet> paginated, String query, Model model) {
 		List<Vet> listVets = paginated.getContent();
 		model.addAttribute("currentPage", page);
 		model.addAttribute("totalPages", paginated.getTotalPages());
 		model.addAttribute("totalItems", paginated.getTotalElements());
 		model.addAttribute("listVets", listVets);
+		model.addAttribute("q", query);
 		return "vets/vetList";
 	}
 
-	private Page<Vet> findPaginated(int page) {
+	private Page<Vet> findPaginated(int page, String query) {
 		int pageSize = 5;
 		int safePage = Math.max(page, 1);
 		Pageable pageable = PageRequest.of(safePage - 1, pageSize);
-		return vetRepository.findAll(pageable);
+		if (query.isEmpty()) {
+			return vetRepository.findAll(pageable);
+		}
+		return vetRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(query, query, pageable);
 	}
 
 	@GetMapping({ "/vets" })

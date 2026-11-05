@@ -30,6 +30,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
@@ -212,6 +213,15 @@ class ClinicServiceTests {
 		assertThat(vet.getNrOfSpecialties()).isEqualTo(2);
 		assertThat(vet.getSpecialties().get(0).getName()).isEqualTo("dentistry");
 		assertThat(vet.getSpecialties().get(1).getName()).isEqualTo("surgery");
+	}
+
+	@Test
+	void shouldFindVetsByFirstNameOrLastNameContainingIgnoreCase() {
+		Page<Vet> page = this.vets.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase("LE", "LE",
+				PageRequest.of(0, 5));
+
+		assertThat(page.getTotalElements()).isEqualTo(1);
+		assertThat(page.getContent()).extracting(Vet::getLastName).containsExactly("Leary");
 	}
 
 	@Test
