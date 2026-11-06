@@ -99,7 +99,7 @@ class VisitController {
 			BindingResult result, RedirectAttributes redirectAttributes) {
 		LocalDate today = LocalDate.now();
 		if (visit.getDate() != null
-				&& (!visit.getDate().isAfter(today) || visit.getDate().isAfter(today.plusDays(365)))) {
+				&& (!visit.getDate().isAfter(today) || visit.getDate().isAfter(today.plusDays(31)))) {
 			result.rejectValue("date", "typeMismatch.visitDate");
 		}
 
