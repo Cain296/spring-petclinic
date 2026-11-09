@@ -18,6 +18,8 @@ package org.springframework.samples.petclinic.owner;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OwnerTests {
@@ -46,6 +48,30 @@ class OwnerTests {
 		owner.addPet(pet);
 
 		assertEquals(1, owner.getPets().size());
+	}
+
+	@Test
+	void getPetMatchesNameIgnoringCase() {
+		Owner owner = new Owner();
+		Pet pet = new Pet();
+		pet.setId(5);
+		pet.setName("Mittens");
+		owner.addPet(pet);
+
+		assertSame(pet, owner.getPet("mittens"));
+		assertSame(pet, owner.getPet("MITTENS"));
+		assertNull(owner.getPet("unknown"));
+	}
+
+	@Test
+	void getPetCanIgnoreNewPets() {
+		Owner owner = new Owner();
+		Pet newPet = new Pet();
+		newPet.setName("Buddy");
+		owner.addPet(newPet);
+
+		assertSame(newPet, owner.getPet("Buddy"));
+		assertNull(owner.getPet("Buddy", true));
 	}
 
 }
