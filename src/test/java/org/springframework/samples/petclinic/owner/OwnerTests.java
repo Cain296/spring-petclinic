@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic.owner;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OwnerTests {
@@ -46,6 +47,28 @@ class OwnerTests {
 		owner.addPet(pet);
 
 		assertEquals(1, owner.getPets().size());
+	}
+
+	@Test
+	void addVisitRejectsUnknownPet() {
+		Owner owner = new Owner();
+		Pet pet = new Pet();
+		pet.setId(5);
+		pet.setName("Buddy");
+		owner.addPet(pet);
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> owner.addVisit(999, new Visit()));
+
+		assertTrue(exception.getMessage().contains("Invalid Pet identifier!"));
+	}
+
+	@Test
+	void addVisitRejectsNullArguments() {
+		Owner owner = new Owner();
+
+		assertThrows(IllegalArgumentException.class, () -> owner.addVisit(null, new Visit()));
+		assertThrows(IllegalArgumentException.class, () -> owner.addVisit(1, null));
 	}
 
 }
